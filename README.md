@@ -74,6 +74,9 @@ For the best reading experience with graph view, backlinks, and Dataview queries
 
 ```
 /
+├── .claude/
+│   └── settings.json       ← Hooks config (auto-reminds index updates + file-back)
+│
 ├── raw/                    ← This is the "inbox" — drop sources here
 │   ├── archived/           ← Original files (.pdf, .docx, etc.) after conversion
 │   ├── articles/           ← Web articles (.md from Web Clipper)
@@ -96,16 +99,19 @@ For the best reading experience with graph view, backlinks, and Dataview queries
 │   └── charts/             ← PNG charts
 │
 └── tools/                  ← Workflow support scripts
+    ├── build-index.py      ← Rebuilds index.md + _brief.md (backlink ranking, overview)
+    ├── finalize-compile.sh ← Post-compile: lint → mark → index → append insight
+    ├── metrics.py          ← Token counting + cost estimation per compile
     ├── convert-docs.py     ← Core script: converts PDF/DOCX/PPTX to MD
     ├── convert.sh          ← Wrapper: auto-converts all binary files in raw/
     ├── fetch-repo.sh       ← Fetches a GitHub repo into raw/repos/
     ├── file-back.sh        ← Tracks the feedback loop
     ├── impute.sh           ← Creates skeleton concept files for web-impute
-    ├── scan.sh             ← Tracks ingest status
+    ├── scan.sh             ← Tracks ingest status + compile metrics
     ├── fetch-images.sh     ← Downloads external images from clipped articles (markdown + HTML)
     ├── save-image.sh       ← Downloads a single specific image
     ├── search.sh           ← Full-text search + fuzzy search across the wiki
-    ├── lint.sh             ← Wiki health check (9 checks, noise-filtered)
+    ├── lint.sh             ← Wiki health check (10 checks + duplicate detection)
     ├── chart.py            ← Generates PNG charts
     └── serve.py            ← Search UI in the browser
 ```
@@ -181,8 +187,8 @@ Claude will automatically:
 2. Download any external images to local (if present)
 3. Read and summarize each file
 4. Create/update `wiki/summaries/`, `wiki/concepts/`, `wiki/domains/`
-5. Update `wiki/index.md` and `wiki/_brief.md`
-6. Mark each file as processed
+5. Verify output quality (required sections, valid links, concept limits)
+6. Run lint → update indexes → mark as processed
 
 To compile a specific file:
 ```
@@ -203,6 +209,12 @@ query: find connections between [domain A] and [domain B]
 ```
 
 > The wiki needs ~50+ articles before Q&A gives consistently good results. Early on, there will still be many gaps.
+
+### Deep research → wiki
+```
+research: [topic]       → parallel sub-agents research the topic, compile into wiki
+```
+Uses 3 parallel agents (web search, wiki analysis, expert sources) then compiles findings into summaries + concepts with a mandatory quality checklist.
 
 ### Generate reports / slides
 ```
@@ -340,9 +352,10 @@ python3 tools/serve.py
 ./tools/lint.sh                # run and print results
 ./tools/lint.sh --save         # save report to outputs/notes/
 ./tools/lint.sh --impute       # list missing concepts that need research
+./tools/lint.sh --quick wiki/concepts/foo.md   # fast single-file check
 ```
 
-Lint checks 9 sections: broken links, orphan files, missing frontmatter, domain stats, tag clusters (detects potential new domains), stale MOCs, bridge note candidates.
+Lint checks 10 sections: broken links, orphan files, missing frontmatter, domain stats, tag clusters (detects potential new domains), stale MOCs, bridge note candidates, and **duplicate concept detection** (flags concept pairs with ≥60% tag overlap).
 
 > **Noise reduction**: The "missing concepts" check uses smart filtering (ASCII ratio, word count, allow-list).
 > Add terms to `.lint-ignore-terms` (root) to exclude them from the check.
@@ -469,4 +482,5 @@ marp outputs/slides/file-name.md --pdf       # export to PDF
 |------|---------|
 | `CLAUDE.md` | Setup guide and commands for **users** |
 | `AGENTS.md` | Detailed instructions for **Claude** when executing (don't edit unless you want to change behavior) |
+| `.claude/settings.json` | Claude Code hooks — auto-reminds wiki index updates + file-back at session end |
 | `workflow.svg` | Workflow diagram — embedded in README |
