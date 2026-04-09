@@ -4,6 +4,7 @@
 #   ./tools/lint.sh              # full check, print to terminal
 #   ./tools/lint.sh --save       # save report to outputs/notes/lint-YYYY-MM-DD.md
 #   ./tools/lint.sh --impute     # list missing topics suitable for web search imputation
+#   ./tools/lint.sh --quick <file>  # fast single-file check (frontmatter, links, domain)
 
 set -euo pipefail
 
@@ -223,7 +224,102 @@ run_checks() {
     fi
   done
   [[ $found_bridge -eq 0 ]] && echo "  (none yet — need more content)"
+
+  _section "10. Potential duplicate concepts (tag overlap ≥60%)"
+  declare -A concept_tags_arr
+  while IFS= read -r -d '' f; do
+    name="$(basename "$f" .md)"
+    tags_line=$(grep -m1 "^tags:" "$f" 2>/dev/null || true)
+    if [[ -n "$tags_line" ]]; then
+      tags=$(echo "$tags_line" | tr -d '[]"' | sed 's/tags://' | tr ',' '\n' | sed 's/^ *//' | grep -E '^[a-z]' | sort -u | tr '\n' ',' | sed 's/,$//')
+      concept_tags_arr["$name"]="$tags"
+    fi
+  done < <(find "$WIKI/concepts" -name "*.md" -print0 2>/dev/null)
+
+  found_dup=0
+  names=("${!concept_tags_arr[@]}")
+  for ((i=0; i<${#names[@]}; i++)); do
+    for ((j=i+1; j<${#names[@]}; j++)); do
+      a="${names[$i]}"
+      b="${names[$j]}"
+      IFS=',' read -ra ta <<< "${concept_tags_arr[$a]}"
+      IFS=',' read -ra tb <<< "${concept_tags_arr[$b]}"
+      overlap=0
+      for x in "${ta[@]}"; do
+        for y in "${tb[@]}"; do
+          [[ "$x" == "$y" ]] && ((overlap++)) || true
+        done
+      done
+      min_t=${#ta[@]}
+      [[ ${#tb[@]} -lt $min_t ]] && min_t=${#tb[@]}
+      if [[ $min_t -ge 3 && $overlap -ge 3 ]]; then
+        pct=$((overlap * 100 / min_t))
+        if [[ $pct -ge 60 ]]; then
+          echo "  OVERLAP ($pct%): $a ↔ $b (shared $overlap of min $min_t tags)"
+          ((ISSUES++)) || true
+          found_dup=1
+        fi
+      fi
+    done
+  done
+  [[ $found_dup -eq 0 ]] && echo "  (no suspicious overlaps found)"
 }
+
+# --- QUICK mode (single-file evaluator) ---
+if [[ "${1:-}" == "--quick" ]]; then
+  TARGET="${2:-}"
+  if [[ -z "$TARGET" ]]; then
+    echo "Usage: $0 --quick <wiki-file>"
+    echo "Example: $0 --quick wiki/summaries/attention-is-all-you-need.md"
+    exit 1
+  fi
+  FULL="$ROOT/$TARGET"
+  if [[ ! -f "$FULL" ]]; then
+    echo "File not found: $FULL"
+    exit 1
+  fi
+
+  QUICK_ISSUES=0
+  echo "=== QUICK LINT: $TARGET ==="
+
+  # Check 1: Frontmatter exists
+  if ! head -1 "$FULL" | grep -q "^---"; then
+    echo "  ❌ MISSING FRONTMATTER"
+    ((QUICK_ISSUES++)) || true
+  else
+    # Check required frontmatter fields
+    for field in title domain tags created source confidence; do
+      if ! awk '/^---$/{n++; next} n==1' "$FULL" | grep -q "^${field}:"; then
+        echo "  ⚠️  MISSING FIELD: $field"
+        ((QUICK_ISSUES++)) || true
+      fi
+    done
+  fi
+
+  # Check 2: Broken wikilinks
+  while IFS= read -r link; do
+    link_clean="${link%%|*}"
+    link_clean="${link_clean%%#*}"
+    link_clean="${link_clean##*/}"
+    if ! find "$WIKI" -name "${link_clean}.md" 2>/dev/null | grep -q .; then
+      echo "  ❌ BROKEN LINK: [[${link_clean}]]"
+      ((QUICK_ISSUES++)) || true
+    fi
+  done < <(grep -oE '\[\[[^]]+\]\]' "$FULL" 2>/dev/null | sed 's/\[\[//;s/\]\]//')
+
+  # Check 3: Domain field value has a corresponding MOC (warning only)
+  dom=$(grep -m1 "^domain:" "$FULL" 2>/dev/null | sed 's/domain: *//' | tr -d '[:space:]"' || true)
+  if [[ -n "$dom" && "$dom" != "meta" && ! -f "$WIKI/domains/${dom}.md" ]]; then
+    echo "  ⚠️  DOMAIN '$dom' has no MOC file (domains/${dom}.md)"
+  fi
+
+  if [[ $QUICK_ISSUES -eq 0 ]]; then
+    echo "  ✅ All checks passed"
+  else
+    echo "  → $QUICK_ISSUES issue(s) found"
+  fi
+  exit 0
+fi
 
 # --- IMPUTE mode ---
 if [[ "${1:-}" == "--impute" ]]; then

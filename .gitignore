@@ -4,6 +4,7 @@ tools/.venv/
 __pycache__/
 wiki/.scan-log
 wiki/.fileback-log
+wiki/.compile-progress.json
 .DS_Store
 
 # Raw source material (copyrighted / personal — keep folder structure via .gitkeep)
@@ -50,8 +51,9 @@ outputs/charts/*
 .env.*
 *.env
 
-# Local Claude Code config (contains machine-specific paths)
-.claude/
+# Claude Code — share hooks (settings.json), ignore personal data (memory, sessions)
+.claude/*
+!.claude/settings.json
 
 # Local agent overrides
 .local-rules.md

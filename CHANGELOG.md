@@ -7,6 +7,44 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.0] - 2026-04-09
+
+### Added — Harness Pattern Upgrades
+_Inspired by [12 Agentic Harness Patterns from Claude Code](https://generativeprogrammer.com/p/12-agentic-harness-patterns-from). Each change maps to a specific pattern._
+
+#### Lifecycle Hooks (Pattern #12: Deterministic Lifecycle Hooks)
+- **PostToolUse hook** — auto-reminds to update `index.md`/`_brief.md` when wiki files are edited (`.claude/settings.json`, local-only)
+- **Stop hook fixed** — was pointing to wrong directory (`LLM-knowledge-base-system`); now uses `$CLAUDE_PROJECT_DIR` with fallback. Also fixed grep pattern (`'Tổng:'` → `'pending file-back'`)
+
+#### Tiered Memory auto-population (Pattern #3: Tiered Memory)
+- `build-index.py` now **auto-generates** "What This Wiki Covers" overview and "Key Concepts" ranking
+- **Backlink counting** — concepts ranked by how many other wiki files reference them (most-linked = most important)
+- Added `BUILD_INDEX` markers for `OVERVIEW`, `KEY_CONCEPTS`, and `INSIGHTS` sections in `_brief.md`
+- **Silent bug fix**: `finalize-compile.sh` was appending insights to `<!-- BUILD_INDEX:INSIGHTS_END -->` but the marker didn't exist → all insights were silently lost
+
+#### Dream Consolidation lite (Pattern #4: Dream Consolidation)
+- `lint.sh` section 10: **duplicate concept detection** — compares tags between all concept file pairs, flags when ≥60% overlap with ≥3 shared tags
+
+#### Compile pipeline hardening (Pattern #10: Command Risk Classification)
+- `finalize-compile.sh` reordered: **lint runs before mark** (was: mark → index → lint). Prevents bad data from being marked as "compiled" before validation
+- Added step 4.5 **pre-finalize verification checklist** in AGENTS.md (required sections, concept limits, link validity, jargon check)
+- `lint.sh --quick <file>` single-file evaluator for fast post-compile checks
+
+#### Research Pipeline (Pattern #7 + #8: Subagents + Fork-Join)
+- New `research: <topic>` command in AGENTS.md §12 — parallel sub-agent workflow for multi-source research
+- 3 phases: Parallel Research (web + wiki + analysis agents) → Compile → Mandatory Checklist
+
+#### Persistent Instructions (Pattern #1: Persistent Instruction File)
+- `CLAUDE.md` new section "Wiki Workflow Invariants" — 3 mandatory rules enforced by hooks + prompt
+- AGENTS.md: context budget for Q&A (≤5 wiki files per query), clean state constraint, progress persistence via `.compile-progress.json`
+
+### Changed
+- `finalize-compile.sh` pipeline order: `index → lint → mark → insight` (was `mark → index → insight → lint`)
+- `build-index.py` template for new projects now includes all `BUILD_INDEX` markers
+- `.gitignore` now excludes `wiki/.compile-progress.json`
+
+---
+
 ## [0.3.0] - 2026-04-06
 
 ### Added

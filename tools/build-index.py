@@ -311,7 +311,9 @@ updated: {today}
 
 ## What This Wiki Covers
 
+<!-- BUILD_INDEX:OVERVIEW_START -->
 _Run `scan /raw` after adding content to populate this section._
+<!-- BUILD_INDEX:OVERVIEW_END -->
 
 ## Domains
 
@@ -327,11 +329,15 @@ _Run `scan /raw` after adding content to populate this section._
 
 ## Key Concepts
 
+<!-- BUILD_INDEX:KEY_CONCEPTS_START -->
 _Will be populated as content is added._
+<!-- BUILD_INDEX:KEY_CONCEPTS_END -->
 
 ## Core Insights Log
 
+<!-- BUILD_INDEX:INSIGHTS_START -->
 _Key insights are appended here after each compile._
+<!-- BUILD_INDEX:INSIGHTS_END -->
 """)
         print("  ✨ Created wiki/_brief.md from template")
     with open(BRIEF_FILE, 'r', encoding='utf-8') as f:
@@ -357,7 +363,63 @@ _Key insights are appended here after each compile._
     for i, s in enumerate(summaries[:15], 1):
         ingest_lines.append(f"{i}. `[[summaries/{s['slug']}]]` — {s['fm'].get('title', '')}")
     brief_text = replace_between_markers(brief_text, "INGEST", "\n".join(ingest_lines))
-    
+
+    # Count backlinks for each concept (most-linked = most important)
+    concept_backlinks = {}
+    all_wiki_files = []
+    for subdir in ['concepts', 'summaries', 'topics', 'domains']:
+        dir_path = os.path.join(WIKI_DIR, subdir)
+        if os.path.exists(dir_path):
+            for f_name in os.listdir(dir_path):
+                if f_name.endswith('.md'):
+                    all_wiki_files.append(os.path.join(dir_path, f_name))
+
+    for c in concepts:
+        slug = c['slug']
+        count = 0
+        for wiki_file in all_wiki_files:
+            if wiki_file.endswith(f'{slug}.md'):
+                continue  # skip self-references
+            try:
+                with open(wiki_file, 'r', encoding='utf-8') as wf:
+                    wcontent = wf.read()
+                if (f'[[{slug}]]' in wcontent or f'[[concepts/{slug}]]' in wcontent
+                        or f'[[{slug}|' in wcontent or f'[[{slug}#' in wcontent):
+                    count += 1
+            except Exception:
+                pass
+        concept_backlinks[slug] = count
+
+    # Generate Overview paragraph
+    active_domains = [name for slug, name in DOMAINS_MAP.items()
+                      if slug != 'meta' and len(domain_concepts.get(slug, [])) > 0]
+    ranked = sorted(concepts, key=lambda c: concept_backlinks.get(c['slug'], 0), reverse=True)
+    top_names = [c['fm'].get('title', c['slug']) for c in ranked[:3]]
+
+    overview = f"This knowledge base contains **{len(concepts)} concepts** across "
+    overview += f"**{len(active_domains)} domain(s)**, compiled from **{len(summaries)} source documents** "
+    overview += f"and **{len(topics)} topic deep-dive(s)**."
+    if active_domains:
+        overview += f" Primary focus: {', '.join(active_domains)}."
+    if top_names:
+        overview += f" Most-referenced: {', '.join(top_names)}."
+
+    brief_text = replace_between_markers(brief_text, "OVERVIEW", overview)
+
+    # Generate Key Concepts (top 10 by backlink count)
+    kc_lines = []
+    for c in ranked[:10]:
+        bl = concept_backlinks.get(c['slug'], 0)
+        title = c['fm'].get('title', c['slug'])
+        ref_note = f" ({bl} refs)" if bl > 0 else ""
+        kc_lines.append(f"- [[concepts/{c['slug']}]] — {title}{ref_note}")
+    if not kc_lines:
+        kc_lines.append("_No concepts yet — run `scan /raw` to populate._")
+
+    brief_text = replace_between_markers(brief_text, "KEY_CONCEPTS", "\n".join(kc_lines))
+
+    print("Generated Overview + Key Concepts (ranked by backlinks)")
+
     with open(BRIEF_FILE, 'w', encoding='utf-8') as f:
         f.write(brief_text)
         

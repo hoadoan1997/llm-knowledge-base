@@ -7,7 +7,7 @@ You are an AI knowledge engineer operating this knowledge base following Andrej 
 
 ## ⚠️ COMPILE CHECKLIST — Follow in exact order (Lazy AI Workflow)
 
-Every time you receive `scan /raw` or `compile <file>`, perform **only these 3 Cognitive steps**:
+Every time you receive `scan /raw` or `compile <file>`, follow these steps in exact order:
 
 ```
 [ ] 0. Style Check: If `.local-rules.md` exists in root, read it and follow its language & formatting rules for ALL output. Skip if absent.
@@ -15,6 +15,12 @@ Every time you receive `scan /raw` or `compile <file>`, perform **only these 3 C
 [ ] 2. Convert (if needed): If the file is .pdf, .docx, .pptx, .xlsx → run `./tools/convert.sh "raw/..."`
 [ ] 3. Read the raw file (Use the view_file tool. If external images are present: run `./tools/fetch-images.sh`)
 [ ] 4. Core Cognitive: Create/update wiki/summaries/<name>.md and wiki/concepts/<name>.md (field `domain:` is required)
+[ ] 4.5. Verify output before finalizing:
+       - Summary has all required sections (Executive Summary, Deep Analysis, Key Insights, Relations)?
+       - Concepts ≤ 3 macro? Each has `domain:` in frontmatter?
+       - All [[links]] point to files that exist (or will exist after this compile)?
+       - No unexplained jargon stacking? (see Clarity requirements)
+       If any check fails → fix before proceeding.
 [ ] 5. Finalize: Run `./tools/finalize-compile.sh "raw/..." "One bullet point — the single most novel key insight (if any)" --model <your-model-id>`
 ```
 
@@ -138,10 +144,25 @@ Pass 2 — Map (parallel chunks of ~4,000 words):
 Pass 3 — Reduce:
   Synthesize skeleton + chunk summaries → final summary
   → Create wiki/summaries/<name>.md
+  → Delete wiki/.compile-progress.json when done
 ```
 
 > **Why Abstract-first**: Abstract + Conclusion contain ~80% of a paper's insight.
 > Read them first to build a "map" before diving into section-level detail.
+
+**Progress persistence**: Before each pass, update `wiki/.compile-progress.json` so progress survives context resets:
+```json
+{
+  "file": "raw/papers/big-paper.pdf",
+  "strategy": "map-reduce",
+  "started": "2026-04-06T14:00",
+  "chunks_done": ["chunk_A", "chunk_B"],
+  "chunks_remaining": ["chunk_C"],
+  "skeleton_summary": "Main thesis is...",
+  "notes": "Methods section skipped — not relevant to wiki domain"
+}
+```
+If a new session starts and this file exists → read it and resume from where the previous session left off.
 
 ---
 
@@ -163,6 +184,8 @@ Step 2 — Create a synthesis file:
 Step 3 — scan.sh --mark each part separately:
   ./tools/scan.sh --mark "raw/papers/<name>.pdf" --note "part1/3 done"
 ```
+
+**Progress persistence**: Use `wiki/.compile-progress.json` (same format as Map-Reduce) to track which parts are done. Update after each part summary. Delete the file after the synthesis is complete.
 
 ---
 
@@ -274,10 +297,12 @@ After creating any output, always ask/suggest:
 When receiving `query: <question>`:
 1. Read `wiki/_brief.md` to get overall context
 2. Use `tools/search.sh` to find relevant files
-3. Read the relevant files
+3. Read the relevant files (**context budget: ≤5 wiki files per query** — prefer _brief.md + search hits; do not read entire domain MOCs unless the question is specifically about domain structure)
 4. Answer based on wiki content — **do not hallucinate beyond the wiki**
 5. If the wiki does not cover the topic: clearly state "The wiki does not cover this topic yet"
 6. Suggest: "Would you like me to research and add this to the wiki?"
+
+> **Why a context budget?** More context ≠ better answers. Transformer attention dilutes with long context (context rot), leading to worse reasoning. Load only what you need.
 
 ---
 
@@ -336,6 +361,7 @@ To view imputed concepts that still need verification: `./tools/impute.sh --list
 | `wiki-graph` | Generate knowledge graph visualization of the entire wiki |
 | `index` | Run `python3 tools/build-index.py` |
 | `brief` | Run `python3 tools/build-index.py` |
+| `research: <topic>` | Parallel research pipeline → wiki (see §12) |
 
 ---
 
@@ -346,6 +372,7 @@ To view imputed concepts that still need verification: `./tools/impute.sh --list
 - Do not hallucinate sources — if uncertain: mark as `[unverified]`
 - Concept files: maximum ~150 lines, topic files: maximum ~300 lines
 - Prefer updating existing files over creating new ones
+- **Clean state**: After every compile step, the wiki must be in a consistent state — all created files indexed, all links valid. If interrupted mid-compile, mark partial progress with `scan.sh --mark <file> --note "part X/Y done"` so the next session can resume cleanly
 
 ---
 
@@ -408,3 +435,33 @@ tools/.venv/bin/python3 tools/chart.py --type <type> --data '<json>' --title "<t
 Types: `timeline`, `bar`, `horizontal-bar`, `network`, `heatmap`, `pie`, `scatter`, `wiki-network`
 
 Output is saved to `outputs/charts/` — embed in a report with `![title](../../outputs/charts/name.png)`
+
+---
+
+## 12. Research Pipeline (Parallel)
+
+When receiving `research: <topic>`:
+Use parallel sub-agents for topics that span multiple sources. Follows the compile checklist but with parallel research upfront.
+
+### Phase 1 — Parallel Research (use Agent tool):
+- **Agent A (Web)**: WebSearch for official docs, announcements, changelogs on the topic
+- **Agent B (Wiki)**: Search existing wiki for related concepts needing updates (`search.sh`, Grep, Read)
+- **Agent C (Analysis)**: WebSearch for expert analysis, comparisons, alternative perspectives
+
+### Phase 2 — Compile:
+Synthesize all agent findings into wiki format. Follow the standard compile checklist (§1):
+- Create `wiki/summaries/<topic-slug>.md` with all required sections
+- Create/update concept files (max 3 macro concepts, each with `domain:`)
+- Cross-reference with existing concepts found by Agent B
+
+### Phase 3 — Mandatory Checklist:
+```
+[ ] Summary written with all required sections
+[ ] Concepts ≤3 macro, each has domain: field
+[ ] finalize-compile.sh run (auto-updates index, brief, MOCs)
+[ ] Cross-references added to related existing concepts
+[ ] lint.sh --quick passes on all new files
+```
+
+> **Why parallel?** Sequential research fills context with material the next phase discards.
+> Isolated sub-agents each get clean context — better reasoning per phase.
