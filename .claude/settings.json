@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "grep -q '\"file_path\"[[:space:]]*:[[:space:]]*\"[^\"]*wiki/' && echo '⚠️ Wiki file changed — run build-index.py if not already done' || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && result=$(./tools/file-back.sh --list 2>/dev/null) && echo \"$result\" | grep -q 'pending file-back' && echo \"$result\" || true",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

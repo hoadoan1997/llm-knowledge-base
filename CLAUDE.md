@@ -103,3 +103,15 @@ tools/.venv/bin/python3 tools/chart.py --list-types
 3. **No RAG needed at ~400K words** — LLM navigates via `_brief.md` + `index.md`
 4. **Domains are not pre-designed** — create a MOC when ≥10 concepts share the same topic
 5. `.lint-ignore-terms` (root) — allow-list for lint to skip false positives
+
+---
+
+## Wiki Workflow Invariants
+
+After compiling or modifying wiki content, **ALWAYS** ensure:
+1. Run `finalize-compile.sh` or `python3 tools/build-index.py` to update `index.md`, `_brief.md`, and domain MOCs
+2. All `[[wikilinks]]` resolve to existing files
+3. File-back any output before ending session (`file-back: <output-file>`)
+
+> Enforced by hooks in `.claude/settings.json` — but don't rely on hooks alone.
+> Never skip ancillary file updates from the AGENTS.md compile checklist.

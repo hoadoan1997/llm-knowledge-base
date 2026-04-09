@@ -21,17 +21,32 @@ done
 MARK_ARGS="--mark \"$RAW_FILE\""
 [ -n "$MODEL_FLAG" ] && MARK_ARGS="$MARK_ARGS --model $MODEL_FLAG"
 
-echo "[1/3] Marking file as compiled..."
-eval ./tools/scan.sh $MARK_ARGS
-
-echo "[2/3] Building wiki indexes..."
+echo "[1/4] Building wiki indexes..."
 python3 ./tools/build-index.py
 
+echo "[2/4] Quick lint on compiled output..."
+BASE=$(basename "$RAW_FILE" | sed 's/\.[^.]*$//')
+SLUG=$(echo "$BASE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+SUMMARY="wiki/summaries/${SLUG}.md"
+LINT_OK=1
+if [ -f "$SUMMARY" ]; then
+    ./tools/lint.sh --quick "$SUMMARY" || LINT_OK=0
+else
+    echo "  (summary file not found at $SUMMARY — skipping quick lint)"
+fi
+
+echo "[3/4] Marking file as compiled..."
+eval ./tools/scan.sh $MARK_ARGS
+
 if [ -n "$INSIGHT" ]; then
-    echo "[3/3] Appending key insight to _brief.md..."
+    echo "[4/4] Appending key insight to _brief.md..."
     perl -i -pe "s|<!-- BUILD_INDEX:INSIGHTS_END -->|- $INSIGHT\n<!-- BUILD_INDEX:INSIGHTS_END -->|" wiki/_brief.md
 else
-    echo "[3/3] No key insight provided. Skipping."
+    echo "[4/4] No key insight provided. Skipping."
+fi
+
+if [ $LINT_OK -eq 0 ]; then
+    echo "⚠️  Lint found issues — review and fix above warnings."
 fi
 
 echo "✅ Compile pipeline finished successfully."
