@@ -1,7 +1,7 @@
 # CLAUDE.md — Cheat Sheet
 
 > LLM-powered knowledge base. **LLM writes the wiki, you curate.**  
-> Detailed behavior: `@AGENTS.md` | Full guide: `README.md`
+> Detailed behavior: `@AGENTS.md` | Skills: `skills/` | Full guide: `README.md`
 
 @AGENTS.md
 
@@ -68,6 +68,13 @@ python3 ./tools/build-index.py               # Rebuild index.md & _brief.md manu
 # Lint
 ./tools/lint.sh                              # health check
 ./tools/lint.sh --save                       # save report → outputs/notes/
+./tools/lint.sh --quick wiki/concepts/foo.md # fast single-file check
+
+# Eval (run before/after upgrades to measure improvement)
+./tools/eval-harness.sh                      # system-level: context budget, hooks, wiki health
+./tools/eval-harness.sh --save               # save → outputs/notes/eval-harness-YYYY-MM-DD.md
+./tools/eval-skills.sh                       # skill quality: frontmatter, gotchas, resolver paths
+./tools/eval-skills.sh --save                # save → outputs/notes/eval-skills-YYYY-MM-DD.md
 
 # Web-impute
 ./tools/impute.sh "<topic>"                  # create skeleton concept file
@@ -113,5 +120,11 @@ After compiling or modifying wiki content, **ALWAYS** ensure:
 2. All `[[wikilinks]]` resolve to existing files
 3. File-back any output before ending session (`file-back: <output-file>`)
 
-> Enforced by hooks in `.claude/settings.json` — but don't rely on hooks alone.
-> Never skip ancillary file updates from the AGENTS.md compile checklist.
+> Enforced by hooks in `.claude/settings.json`:
+> - **PreToolUse** — injects `.local-rules.md` before any wiki write
+> - **PostToolUse** — auto-runs `build-index.py` + counts wiki edits (warns at 5)
+> - **UserPromptSubmit** — auto-injects compile context when `compile raw/...` detected
+> - **Stop** — shows pending file-backs + saves session state to `/tmp/`
+> - **SessionStart** — restores session state after context compaction
+>
+> Hooks enforce invariants but don't replace the compile checklist. Never skip ancillary file updates from AGENTS.md.

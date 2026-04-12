@@ -1,13 +1,54 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rm -f /tmp/llm-kb-wiki-edits; STATE=$(cat /tmp/llm-kb-session-state.md 2>/dev/null); [ -n \"$STATE\" ] && printf '\\n--- Session State (Recovery) ---\\n%s\\n--- End Session State ---\\nIMPORTANT: Re-read active compile file. Do NOT redo completed steps.\\n' \"$STATE\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); PROMPT=$(echo \"$INPUT\" | python3 -c \"import sys,json; print(json.load(sys.stdin).get('prompt',''))\" 2>/dev/null); FILE=$(echo \"$PROMPT\" | grep -oE 'compile raw/[^ ]+' | sed 's/compile //' | head -1); [ -z \"$FILE\" ] && exit 0; SLUG=$(basename \"$FILE\" .md | tr '[:upper:]' '[:lower:]' | tr '_' '-'); INFO=$(cd \"$CLAUDE_PROJECT_DIR\" && ./tools/scan.sh --info \"$FILE\" 2>/dev/null | grep -E 'lines|strategy|words' | head -3 | sed 's/^/  /'); printf '\\n## Compile Context (auto-injected)\\n- Source: %s\\n- Summary target: wiki/summaries/%s.md\\n- Concepts dir: wiki/concepts/\\n%s\\n' \"$FILE\" \"$SLUG\" \"$INFO\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); echo \"$INPUT\" | grep -q 'wiki/' && RULES=$(cat \"$CLAUDE_PROJECT_DIR/.local-rules.md\" 2>/dev/null) && [ -n \"$RULES\" ] && printf '\\n━━━ .local-rules.md (APPLY BEFORE WRITING) ━━━\\n%s\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n' \"$RULES\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "grep -q '\"file_path\"[[:space:]]*:[[:space:]]*\"[^\"]*wiki/' && echo '⚠️ Wiki file changed — run build-index.py if not already done' || true",
-            "timeout": 10
+            "command": "INPUT=$(cat); echo \"$INPUT\" | grep -q 'wiki/' && cd \"$CLAUDE_PROJECT_DIR\" && python3 tools/build-index.py > /dev/null 2>&1 && echo '✅ Index rebuilt' || true",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); echo \"$INPUT\" | grep -q 'wiki/' || exit 0; COUNTER=/tmp/llm-kb-wiki-edits; COUNT=$(cat \"$COUNTER\" 2>/dev/null || echo 0); COUNT=$((COUNT+1)); echo \"$COUNT\" > \"$COUNTER\"; [ \"$COUNT\" -eq 5 ] && echo '⚠️  5 wiki edits this session — consider running lint before ending' || true",
+            "timeout": 5
           }
         ]
       }
@@ -19,6 +60,11 @@
           {
             "type": "command",
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && result=$(./tools/file-back.sh --list 2>/dev/null) && echo \"$result\" | grep -q 'pending file-back' && echo \"$result\" || true",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "STATE_FILE=/tmp/llm-kb-session-state.md; cd \"$CLAUDE_PROJECT_DIR\"; ACTIVE=$(python3 -c \"import json; d=json.load(open('.compile-progress.json')); print(d.get('file','none'))\" 2>/dev/null || echo 'none'); PENDING=$(./tools/file-back.sh --list 2>/dev/null | grep -c 'pending' || echo 0); printf '## Wiki Session\\n- Saved: %s\\n- Active compile: %s\\n- Pending file-backs: %s\\n' \"$(date '+%Y-%m-%d %H:%M')\" \"$ACTIVE\" \"$PENDING\" > \"$STATE_FILE\"",
             "timeout": 15
           }
         ]
