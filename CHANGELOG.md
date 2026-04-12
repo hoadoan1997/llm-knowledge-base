@@ -7,6 +7,40 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.5.0] - 2026-04-12
+
+### Added — Eval-Driven Harness Upgrade
+_Inspired by studying agentic harness patterns (claudekit-engineer). Each change gated by before/after eval comparison._
+
+#### Eval Framework (new)
+- `tools/eval-harness.sh` — system-level eval: 10 checks covering context budget, hook presence/correctness, resolver paths, research skill quality, compile tools, wiki structure, concept file sizes, lint snapshot. Run `--save` to snapshot results to `outputs/notes/`.
+- `tools/eval-skills.sh` — skill quality eval: 43 checks across all 5 skill files (frontmatter, gotchas, resolver paths). Pair with eval-harness.sh for full before/after upgrade comparison.
+
+#### Skills Directory (new)
+- `skills/compile-ingest/SKILL.md` — compile and ingest skill (extracted from AGENTS.md)
+- `skills/lint-impute.md` — lint and web-impute skill
+- `skills/output-generation.md` — report, slides, chart, file-back skill
+- `skills/query-mode.md` — query answering skill
+- `skills/research-pipeline.md` — parallel research pipeline with structured output template and explicit search limits (max 5 WebSearch calls per agent)
+
+#### 5-Hook Lifecycle (`.claude/settings.json`)
+- **SessionStart hook** (new) — on `startup|compact`: resets edit counter + injects session state for compact recovery. After context compaction, active compile file and pending file-backs are restored automatically.
+- **UserPromptSubmit hook** (new) — detects `compile raw/...` pattern; auto-injects compile context (source path, summary target, scan.sh info) before each compile — saves ~200 tokens of manual derivation.
+- **PostToolUse edit counter** (new, extends existing hook) — tracks wiki edits in `/tmp/llm-kb-wiki-edits`; warns after 5 edits to run lint before ending session.
+- **Stop session state** (new, extends existing hook) — persists active compile file + pending file-back count to `/tmp/llm-kb-session-state.md` for compact recovery.
+
+#### Query Intelligence
+- `search.sh` — all modes (`search`, `files`, `fuzzy`) now log queries + hit/miss status to `wiki/.query-log.jsonl`
+- `lint.sh` Section 11 — surfaces query blind spots: reads `.query-log.jsonl`, reports total queries, miss count, and top missed terms as impute candidates
+
+### Changed
+- `AGENTS.md` — condensed from ~400 lines to 113 lines using **resolver pattern**: always-loaded context ≤ 250 lines (~1,550 tokens); skill details loaded on-demand from `skills/` directory
+- `CLAUDE.md` — added `# Eval` section (eval-harness.sh + eval-skills.sh commands); added `lint.sh --quick`; updated hooks description to accurately list all 5 hooks
+- `README.md` — added `plans/` to directory structure; added eval-harness.sh and eval-skills.sh to tools listing
+- `.gitignore` — replaced useless `eval/` entry with `wiki/.query-log.jsonl` (personal search history)
+
+---
+
 ## [0.4.0] - 2026-04-09
 
 ### Added — Harness Pattern Upgrades

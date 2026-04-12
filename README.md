@@ -75,7 +75,9 @@ For the best reading experience with graph view, backlinks, and Dataview queries
 ```
 /
 ├── .claude/
-│   └── settings.json       ← Hooks config (auto-reminds index updates + file-back)
+│   └── settings.json       ← Hooks config (5 hooks: compile context, index rebuild, edit counter, session state, file-back)
+│
+├── plans/                  ← Implementation plans (upgrade tracking)
 │
 ├── raw/                    ← This is the "inbox" — drop sources here
 │   ├── archived/           ← Original files (.pdf, .docx, etc.) after conversion
@@ -112,6 +114,8 @@ For the best reading experience with graph view, backlinks, and Dataview queries
     ├── save-image.sh       ← Downloads a single specific image
     ├── search.sh           ← Full-text search + fuzzy search across the wiki
     ├── lint.sh             ← Wiki health check (10 checks + duplicate detection)
+    ├── eval-harness.sh     ← System-level eval: context budget, hooks, wiki health (run before/after upgrades)
+    ├── eval-skills.sh      ← Skill quality eval: frontmatter, gotchas, resolver paths
     ├── chart.py            ← Generates PNG charts
     └── serve.py            ← Search UI in the browser
 ```
@@ -482,5 +486,5 @@ marp outputs/slides/file-name.md --pdf       # export to PDF
 |------|---------|
 | `CLAUDE.md` | Setup guide and commands for **users** |
 | `AGENTS.md` | Detailed instructions for **Claude** when executing (don't edit unless you want to change behavior) |
-| `.claude/settings.json` | Claude Code hooks — auto-reminds wiki index updates + file-back at session end |
+| `.claude/settings.json` | Claude Code hooks — 5 hooks: auto-rebuild index, compile context injection, wiki edit counter, session state persistence (compact recovery), file-back reminder |
 | `workflow.svg` | Workflow diagram — embedded in README |

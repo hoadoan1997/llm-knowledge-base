@@ -83,17 +83,33 @@ case "$MODE" in
   files)
     if [[ -z "$QUERY" ]]; then echo "Usage: $0 <query> --files"; exit 1; fi
     echo "=== FILES MATCHING: $QUERY ==="
-    grep -ril "$QUERY" "$SCOPE" --include="*.md" 2>/dev/null | sort | sed "s|$ROOT/||"
+    RESULTS=$(grep -ril "$QUERY" "$SCOPE" --include="*.md" 2>/dev/null | sort | sed "s|$ROOT/||")
+    echo "$RESULTS"
+    # Query logging
+    QUERY_LOG="$ROOT/wiki/.query-log.jsonl"
+    HIT_COUNT=$(echo "$RESULTS" | grep -c "." 2>/dev/null || echo 0)
+    MISS=$([ "$HIT_COUNT" -eq 0 ] && echo "true" || echo "false")
+    printf '{"date":"%s","mode":"files","query":"%s","hits":%s,"miss":%s}\n' \
+      "$(date +%Y-%m-%d)" "$(echo "$QUERY" | tr '"' "'")" "$HIT_COUNT" "$MISS" \
+      >> "$QUERY_LOG" 2>/dev/null || true
     ;;
 
   search)
     if [[ -z "$QUERY" ]]; then echo "Usage: $0 <query>"; exit 1; fi
     echo "=== SEARCH: $QUERY ==="
     echo ""
-    grep -rin "$QUERY" "$SCOPE" --include="*.md" \
+    RESULTS=$(grep -rin "$QUERY" "$SCOPE" --include="*.md" \
       --color=never -A 2 -B 1 \
       | sed "s|$ROOT/||" \
-      | head -80
+      | head -80)
+    echo "$RESULTS"
+    # Query logging
+    QUERY_LOG="$ROOT/wiki/.query-log.jsonl"
+    HIT_COUNT=$(echo "$RESULTS" | grep -c "." 2>/dev/null || echo 0)
+    MISS=$([ "$HIT_COUNT" -eq 0 ] && echo "true" || echo "false")
+    printf '{"date":"%s","mode":"search","query":"%s","hits":%s,"miss":%s}\n' \
+      "$(date +%Y-%m-%d)" "$(echo "$QUERY" | tr '"' "'")" "$HIT_COUNT" "$MISS" \
+      >> "$QUERY_LOG" 2>/dev/null || true
     ;;
 
   fuzzy)
@@ -112,17 +128,25 @@ case "$MODE" in
 
     if command -v rg &>/dev/null; then
       # ripgrep available: faster, better output
-      rg -i "$FUZZY_PATTERN" "$SCOPE" --glob "*.md" \
+      RESULTS=$(rg -i "$FUZZY_PATTERN" "$SCOPE" --glob "*.md" \
         --color=never -A 1 -B 1 \
         | sed "s|$ROOT/||" \
-        | head -80
+        | head -80)
     else
       # fallback: grep with extended regex
-      grep -rEin "$FUZZY_PATTERN" "$SCOPE" --include="*.md" \
+      RESULTS=$(grep -rEin "$FUZZY_PATTERN" "$SCOPE" --include="*.md" \
         --color=never -A 1 -B 1 \
         | sed "s|$ROOT/||" \
-        | head -80
+        | head -80)
     fi
+    echo "$RESULTS"
+    # Query logging
+    QUERY_LOG="$ROOT/wiki/.query-log.jsonl"
+    HIT_COUNT=$(echo "$RESULTS" | grep -c "." 2>/dev/null || echo 0)
+    MISS=$([ "$HIT_COUNT" -eq 0 ] && echo "true" || echo "false")
+    printf '{"date":"%s","mode":"fuzzy","query":"%s","hits":%s,"miss":%s}\n' \
+      "$(date +%Y-%m-%d)" "$(echo "$QUERY" | tr '"' "'")" "$HIT_COUNT" "$MISS" \
+      >> "$QUERY_LOG" 2>/dev/null || true
     ;;
 
 esac

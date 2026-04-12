@@ -263,6 +263,28 @@ run_checks() {
     done
   done
   [[ $found_dup -eq 0 ]] && echo "  (no suspicious overlaps found)"
+
+  _section "11. Query blind spots (from .query-log.jsonl)"
+  QUERY_LOG="$ROOT/wiki/.query-log.jsonl"
+  if [[ -f "$QUERY_LOG" ]]; then
+    TOTAL_QUERIES=$(wc -l < "$QUERY_LOG" | tr -d ' ')
+    MISS_COUNT=$(grep '"miss":true' "$QUERY_LOG" 2>/dev/null | wc -l | tr -d ' ')
+    echo "  Total queries logged: $TOTAL_QUERIES"
+    echo "  Queries with zero hits (blind spots): $MISS_COUNT"
+    if [[ "$MISS_COUNT" -gt 0 ]]; then
+      echo "  Top missed queries (impute candidates):"
+      grep '"miss":true' "$QUERY_LOG" 2>/dev/null \
+        | grep -o '"query":"[^"]*"' \
+        | sed 's/"query":"//;s/"//' \
+        | sort | uniq -c | sort -rn | head -5 \
+        | while read -r count term; do
+            echo "    [$count×] $term"
+          done
+    fi
+  else
+    echo "  No query log found (wiki/.query-log.jsonl) — queries not yet tracked"
+    echo "  Query logging activates automatically when search.sh is used (v0.5.0+)"
+  fi
 }
 
 # --- QUICK mode (single-file evaluator) ---
