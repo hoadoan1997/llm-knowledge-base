@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 980" width="760" height="980"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 1006" width="760" height="1006"
      font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
 
   <!-- Background -->
-  <rect width="760" height="980" fill="#FAFAFA" rx="10"/>
+  <rect width="760" height="1006" fill="#FAFAFA" rx="10"/>
 
   <!-- Arrowhead defs -->
   <defs>
@@ -19,7 +19,7 @@
 
   <!-- Title -->
   <text x="380" y="30" text-anchor="middle" font-size="15" font-weight="700" fill="#212121">LLM Knowledge Base — Workflow</text>
-  <text x="380" y="46" text-anchor="middle" font-size="9" fill="#616161">by <tspan font-weight="bold">Acy Doan</tspan> (based on Andrej Karpathy's workflow)  ·  v0.5.0</text>
+  <text x="380" y="46" text-anchor="middle" font-size="9" fill="#616161">by <tspan font-weight="bold">Acy Doan</tspan> (based on Andrej Karpathy's workflow)  ·  v1.0.0</text>
 
   <!-- ═══ ROW 1: Sources ═══ -->
   <rect x="55"  y="58" width="155" height="46" rx="7" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1.5"/>
@@ -45,7 +45,7 @@
 
   <!-- ═══ ROW 2: Ingestion Tools ═══ -->
   <rect x="55"  y="124" width="155" height="38" rx="6" fill="#BBDEFB" stroke="#64B5F6" stroke-width="1"/>
-  <text x="132" y="140" text-anchor="middle" font-size="10" font-weight="600" fill="#0D47A1">Obsidian Web Clipper</text>
+  <text x="132" y="140" text-anchor="middle" font-size="10" font-weight="600" fill="#0D47A1">fetch-url.sh / Clipper</text>
   <text x="132" y="154" text-anchor="middle" font-size="9"  fill="#1565C0">→ raw/articles/</text>
 
   <rect x="220" y="124" width="155" height="38" rx="6" fill="#C5CAE9" stroke="#7986CB" stroke-width="1"/>
@@ -111,18 +111,22 @@
   <!-- RESEARCH pipeline branch (from wiki → research → back) -->
   <path d="M 160,428 L 120,428 L 120,460 L 160,460"
         fill="none" stroke="#7E57C2" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#ah)"/>
-  <rect x="22" y="414" width="90" height="32" rx="4" fill="#EDE7F6" stroke="#7E57C2" stroke-width="1"/>
-  <text x="67" y="428" text-anchor="middle" font-size="9" font-weight="600" fill="#4527A0">research:</text>
-  <text x="67" y="440" text-anchor="middle" font-size="8" fill="#4527A0">3 parallel agents</text>
+  <rect x="22" y="407" width="90" height="52" rx="4" fill="#EDE7F6" stroke="#7E57C2" stroke-width="1"/>
+  <text x="67" y="421" text-anchor="middle" font-size="9" font-weight="600" fill="#4527A0">research:</text>
+  <text x="67" y="433" text-anchor="middle" font-size="8" fill="#4527A0">3 parallel agents</text>
+  <line x1="22" y1="441" x2="112" y2="441" stroke="#7E57C2" stroke-width="0.75"/>
+  <text x="67" y="451" text-anchor="middle" font-size="9" font-weight="600" fill="#4527A0">news:</text>
+  <text x="67" y="462" text-anchor="middle" font-size="8" fill="#4527A0">30-day social</text>
 
   <!-- Arrow wiki → outputs -->
   <line x1="380" y1="460" x2="380" y2="488" stroke="#9E9E9E" stroke-width="2" marker-end="url(#ah)"/>
-  <text x="390" y="479" font-size="8" fill="#BDBDBD" font-style="italic">query:  ·  report:  ·  slides:  ·  chart:</text>
+  <text x="390" y="473" font-size="8" fill="#BDBDBD" font-style="italic">query:  ·  report:  ·  slides:</text>
+  <text x="390" y="483" font-size="8" fill="#BDBDBD" font-style="italic">chart:  ·  html:</text>
 
   <!-- ═══ ROW 6: outputs/ ═══ -->
   <rect x="230" y="490" width="300" height="46" rx="8" fill="#EDE7F6" stroke="#9575CD" stroke-width="2"/>
   <text x="380" y="510" text-anchor="middle" font-size="12" font-weight="700" fill="#311B92">📤  outputs/</text>
-  <text x="380" y="526" text-anchor="middle" font-size="9"  fill="#4527A0">reports/  ·  slides/  ·  notes/  ·  charts/</text>
+  <text x="380" y="526" text-anchor="middle" font-size="9"  fill="#4527A0">reports/  ·  slides/  ·  notes/  ·  charts/  ·  html/</text>
 
   <!-- ═══ file-back feedback loop ═══ -->
   <path d="M 530,513 L 718,513 L 718,446 L 600,446"
@@ -134,7 +138,7 @@
 
   <!-- ═══ HOOKS SECTION ═══ -->
   <rect x="20" y="550" width="720" height="100" rx="8" fill="#FFFDE7" stroke="#FFC107" stroke-width="1.5"/>
-  <text x="380" y="568" text-anchor="middle" font-size="11" font-weight="700" fill="#E65100">🪝  Lifecycle Hooks — Automation Layer (v0.5.0)</text>
+  <text x="380" y="568" text-anchor="middle" font-size="11" font-weight="700" fill="#E65100">🪝  Lifecycle Hooks — Automation Layer</text>
 
   <!-- Hook boxes: 5 × 140px wide, gap=5, start x=20 -->
   <!-- Box 1: SessionStart -->
@@ -173,7 +177,7 @@
   <text x="656" y="632" text-anchor="middle" font-size="8" fill="#4E342E">+ save session state</text>
 
   <!-- ═══ Legend: COMMANDS ═══ -->
-  <rect x="20" y="660" width="720" height="175" rx="8" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="1"/>
+  <rect x="20" y="660" width="720" height="190" rx="8" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="1"/>
   <text x="36" y="682" font-size="12" font-weight="700" fill="#424242">Common Commands (Workflow Order)</text>
 
   <!-- Col 1: Ingest -->
@@ -182,6 +186,7 @@
   <text x="36"  y="738" font-size="9" fill="#424242">fetch-repo: url --docs</text>
   <text x="36"  y="752" font-size="9" fill="#424242">fetch-pdf: &lt;url&gt; &lt;name&gt;</text>
   <text x="36"  y="766" font-size="9" fill="#424242">save-image.sh &lt;url&gt;</text>
+  <text x="36"  y="780" font-size="9" fill="#424242">fetch-url: &lt;url&gt;</text>
 
   <!-- Col 2: Process -->
   <text x="210" y="706" font-size="10" font-weight="700" fill="#E65100">2. Process (to wiki/)</text>
@@ -189,6 +194,7 @@
   <text x="210" y="738" font-size="9" fill="#424242">compile raw/.../foo.md</text>
   <text x="210" y="752" font-size="9" font-weight="600" fill="#4527A0">research: &lt;topic&gt;</text>
   <text x="210" y="766" font-size="9" fill="#424242">index / brief</text>
+  <text x="210" y="780" font-size="9" font-weight="600" fill="#4527A0">news: &lt;topic&gt;</text>
 
   <!-- Col 3: Output -->
   <text x="384" y="706" font-size="10" font-weight="700" fill="#311B92">3. Query &amp; Output</text>
@@ -196,6 +202,7 @@
   <text x="384" y="738" font-size="9" fill="#424242">report: [topic]</text>
   <text x="384" y="752" font-size="9" fill="#424242">slides: [topic]</text>
   <text x="384" y="766" font-size="9" fill="#424242">chart: [type] [topic]</text>
+  <text x="384" y="780" font-size="9" fill="#424242">html: &lt;file.md&gt;</text>
 
   <!-- Col 4: Maintain -->
   <text x="560" y="706" font-size="10" font-weight="700" fill="#26A69A">4. Maintain &amp; Loop</text>
@@ -205,33 +212,33 @@
   <text x="560" y="766" font-size="9" fill="#795548">eval-skills.sh</text>
   <text x="560" y="780" font-size="9" fill="#424242">python3 tools/serve.py</text>
 
-  <text x="36" y="818" font-size="8" fill="#9E9E9E" font-style="italic">* Wiki needs ~50+ sources for good Q&amp;A. Every output must be filed back so knowledge compounds.</text>
+  <text x="36" y="834" font-size="8" fill="#9E9E9E" font-style="italic">* Wiki needs ~50+ sources for good Q&amp;A. Every output must be filed back so knowledge compounds.</text>
 
   <!-- ═══ Legend: SETUP & PLUGINS ═══ -->
-  <rect x="20" y="828" width="720" height="120" rx="8" fill="#E8F5E9" stroke="#A5D6A7" stroke-width="1"/>
-  <text x="36" y="850" font-size="12" font-weight="700" fill="#1B5E20">🛠️ Obsidian Setup &amp; Plugins — Unlock the Full Power</text>
+  <rect x="20" y="854" width="720" height="120" rx="8" fill="#E8F5E9" stroke="#A5D6A7" stroke-width="1"/>
+  <text x="36" y="876" font-size="12" font-weight="700" fill="#1B5E20">🛠️ Obsidian Setup &amp; Plugins — Unlock the Full Power</text>
 
   <!-- Col 1: Setup -->
-  <text x="36"  y="873" font-size="10" font-weight="700" fill="#2E7D32">1. The Native Power</text>
-  <text x="36"  y="891" font-size="9" fill="#1B5E20">• "Open folder as Vault" in Obsidian</text>
-  <text x="36"  y="906" font-size="9" fill="#1B5E20">• Instantly activates Graph View &amp; Backlinks</text>
-  <text x="36"  y="921" font-size="9" fill="#1B5E20">• Perfect for visually navigating node clusters</text>
+  <text x="36"  y="899" font-size="10" font-weight="700" fill="#2E7D32">1. The Native Power</text>
+  <text x="36"  y="917" font-size="9" fill="#1B5E20">• "Open folder as Vault" in Obsidian</text>
+  <text x="36"  y="932" font-size="9" fill="#1B5E20">• Instantly activates Graph View &amp; Backlinks</text>
+  <text x="36"  y="947" font-size="9" fill="#1B5E20">• Perfect for visually navigating node clusters</text>
 
   <!-- Col 2: Ingest -->
-  <text x="250" y="873" font-size="10" font-weight="700" fill="#2E7D32">2. Obsidian Web Clipper</text>
-  <text x="250" y="891" font-size="9" fill="#1B5E20">• Add Extension to Chrome/Firefox/Edge</text>
-  <text x="250" y="906" font-size="9" fill="#1B5E20">• Highlight, clean, and clip the web cleanly</text>
-  <text x="250" y="921" font-size="9" fill="#1B5E20">• Saves directly into raw/articles/</text>
+  <text x="250" y="899" font-size="10" font-weight="700" fill="#2E7D32">2. Obsidian Web Clipper</text>
+  <text x="250" y="917" font-size="9" fill="#1B5E20">• Add Extension to Chrome/Firefox/Edge</text>
+  <text x="250" y="932" font-size="9" fill="#1B5E20">• Highlight, clean, and clip the web cleanly</text>
+  <text x="250" y="947" font-size="9" fill="#1B5E20">• Saves directly into raw/articles/</text>
 
   <!-- Col 3: Community Plugins -->
-  <text x="464" y="873" font-size="10" font-weight="700" fill="#2E7D32">3. Recommended Plugins</text>
+  <text x="464" y="899" font-size="10" font-weight="700" fill="#2E7D32">3. Recommended Plugins</text>
 
-  <rect x="464" y="882" width="50" height="14" rx="3" fill="#C8E6C9"/>
-  <text x="489" y="892" text-anchor="middle" font-size="8" font-weight="700" fill="#1B5E20">Dataview</text>
-  <text x="520" y="892" font-size="9" fill="#1B5E20">Live SQL-querying for components</text>
+  <rect x="464" y="908" width="50" height="14" rx="3" fill="#C8E6C9"/>
+  <text x="489" y="918" text-anchor="middle" font-size="8" font-weight="700" fill="#1B5E20">Dataview</text>
+  <text x="520" y="918" font-size="9" fill="#1B5E20">Live SQL-querying for components</text>
 
-  <rect x="464" y="900" width="50" height="14" rx="3" fill="#C8E6C9"/>
-  <text x="489" y="910" text-anchor="middle" font-size="8" font-weight="700" fill="#1B5E20">Marp</text>
-  <text x="520" y="910" font-size="9" fill="#1B5E20">Render slide deck (outputs/slides) visually</text>
+  <rect x="464" y="926" width="50" height="14" rx="3" fill="#C8E6C9"/>
+  <text x="489" y="936" text-anchor="middle" font-size="8" font-weight="700" fill="#1B5E20">Marp</text>
+  <text x="520" y="936" font-size="9" fill="#1B5E20">Render slide deck (outputs/slides) visually</text>
 
 </svg>

@@ -261,11 +261,96 @@ case "${1:-}" in
           echo "  → Estimated ~$((words / 500 + 1)) reads (each chunk ~500 words)"
         elif [[ "$words" -le 25000 ]]; then
           echo "Suggested strategy: MAP-REDUCE"
-          echo "  → Split into parallel chunks of ~4000 words each"
-          echo "  → Combine chunk summaries into a final summary"
+          echo "  → Spawn parallel agents per section, combine chunk summaries into final summary"
+          echo "  → Token cost: ~3-4x sequential — use only when context overflow is a real risk"
+          echo ""
+          # Extract section boundaries to guide chunking
+          headings=$(grep -n "^## " "$full" 2>/dev/null || true)
+          if [[ -n "$headings" ]]; then
+            echo "  Section map (chunk by these boundaries, NOT by line count):"
+            prev_line=1
+            prev_title=""
+            while IFS= read -r h; do
+              line_num=$(echo "$h" | awk -F: '{print $1}' | tr -d '[:space:]')
+              title=$(echo "$h" | cut -d: -f2- | sed 's/^[[:space:]]*//' | sed 's/\*\*//g' | tr -d '\r')
+              # Strip leading #/spaces before skip check
+              clean_title=$(echo "$title" | sed 's/^#*[[:space:]]*//')
+              lower_title=$(echo "$clean_title" | tr '[:upper:]' '[:lower:]')
+              if echo "$lower_title" | grep -qE "^(references?|appendix|proofs?|proof of)"; then
+                if [[ -n "$prev_title" ]]; then
+                  span=$(( line_num - prev_line ))
+                  echo "    [lines ${prev_line}-$((line_num-1))] ${prev_title} (${span} lines)"
+                fi
+                echo "    [SKIP line ${line_num}+] ${clean_title} (references/proofs -- not needed)"
+                prev_title=""
+                break
+              fi
+              if [[ -n "$prev_title" ]]; then
+                span=$(( line_num - prev_line ))
+                echo "    [lines ${prev_line}-$((line_num-1))] ${prev_title} (${span} lines)"
+              fi
+              prev_line=$line_num
+              prev_title="$clean_title"
+            done <<< "$headings"
+            if [[ -n "$prev_title" ]]; then
+              echo "    [lines ${prev_line}-end] ${prev_title}"
+            fi
+            echo ""
+            echo "  Suggested chunk grouping for parallel agents:"
+            # Re-run to suggest merged chunks targeting ~150-200 lines each
+            chunk_start=0
+            chunk_label=""
+            chunk_lines=0
+            chunk_idx=1
+            while IFS= read -r h; do
+              line_num=$(echo "$h" | awk -F: '{print $1}' | tr -d '[:space:]')
+              raw_title=$(echo "$h" | cut -d: -f2- | sed 's/^[[:space:]]*//' | sed 's/\*\*//g' | tr -d '\r')
+              clean=$(echo "$raw_title" | sed 's/^#*[[:space:]]*//')
+              lower=$(echo "$clean" | tr '[:upper:]' '[:lower:]')
+              if echo "$lower" | grep -qE "^(references?|appendix|proofs?|proof of)"; then
+                if [[ $chunk_start -gt 0 ]]; then
+                  span=$(( line_num - chunk_start ))
+                  echo "    Chunk ${chunk_idx}: lines ${chunk_start}-$((line_num-1)) (${span} lines) -- ${chunk_label}"
+                fi
+                echo "    [stop here -- skip ${clean} and beyond]"
+                break
+              fi
+              if [[ $chunk_start -eq 0 ]]; then
+                chunk_start=$line_num
+                chunk_label="$clean"
+                chunk_lines=0
+              else
+                span=$(( line_num - chunk_start ))
+                if [[ $span -ge 150 ]]; then
+                  echo "    Chunk ${chunk_idx}: lines ${chunk_start}-$((line_num-1)) (${span} lines) -- ${chunk_label}"
+                  chunk_idx=$(( chunk_idx + 1 ))
+                  chunk_start=$line_num
+                  chunk_label="$clean"
+                  chunk_lines=0
+                fi
+              fi
+            done <<< "$headings"
+          else
+            echo "  No ## headings found -- fall back to ~200-line chunks"
+          fi
         else
           echo "Suggested strategy: HIERARCHICAL SPLIT"
-          echo "  → Document too long. Create part summaries for each section, then synthesize."
+          echo "  → Document too long. Create per-section summaries, then synthesize."
+          echo ""
+          headings=$(grep -n "^## " "$full" 2>/dev/null || true)
+          if [[ -n "$headings" ]]; then
+            echo "  Section map:"
+            while IFS= read -r h; do
+              line_num=$(echo "$h" | awk -F: '{print $1}' | tr -d '[:space:]')
+              title=$(echo "$h" | cut -d: -f2- | sed 's/^[[:space:]]*//' | sed 's/\*\*//g' | tr -d '\r')
+              lower_title=$(echo "$title" | tr '[:upper:]' '[:lower:]')
+              if echo "$lower_title" | grep -qE "^(references|appendix|proofs?|proof of)"; then
+                echo "    [SKIP line ${line_num}+] ${title}"
+                break
+              fi
+              echo "    [line ${line_num}] ${title}"
+            done <<< "$headings"
+          fi
         fi
         ;;
       *)

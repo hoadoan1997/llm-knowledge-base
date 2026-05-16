@@ -1,12 +1,29 @@
 ---
 skill: compile-ingest
-trigger: "scan /raw · compile <file> · fetch-repo: · fetch-pdf:"
+trigger: "scan /raw · compile <file> · fetch-repo: · fetch-pdf: · fetch-url:"
 description: "Use when ingesting any raw file into the wiki. Covers what the AGENTS.md compile checklist steps actually mean, image handling, concept extraction rules, and when to apply which long-doc strategy."
 ---
 
 # Skill: compile-ingest
 
 Follow the compile checklist in AGENTS.md. This skill fills in the *what* behind each step.
+
+---
+
+## fetch-url: command
+
+When you receive `fetch-url: <url> [name]`:
+
+```bash
+./tools/fetch-url.sh "<url>" [name]
+```
+
+The script auto-detects static vs JS page:
+- Static page (≥200 words) → uses `requests` + `markdownify` — fast, token-efficient
+- JS-rendered page (<200 words) → falls back to `r.jina.ai` automatically
+- Force JS: `./tools/fetch-url.sh "<url>" --force-jina`
+
+After the script saves `raw/articles/<name>.md`, continue with the normal compile checklist from Step 3.
 
 ---
 
@@ -53,9 +70,24 @@ Required frontmatter: `domain:` field is non-negotiable. Use the domain MOC slug
 
 ### Long document strategy
 
-Run `./tools/scan.sh --info <file>` → check word count → load the strategy:
+Run `./tools/scan.sh --info <file>` → check word count + section map → pick strategy:
 
-→ **Read `references/long-doc-strategies.md`** for the 4 strategies and thresholds.
+| Words | Strategy | Notes |
+|-------|----------|-------|
+| < 4K | **STUFFING** | Read entire file at once |
+| 4K–10K | **REFINE** | Sequential reads by section, running summary |
+| 10K–25K | **MAP-REDUCE** | Parallel agents per section (see below) |
+| > 25K | **HIERARCHICAL** | Per-section summaries → synthesize |
+
+**MAP-REDUCE — correct flow** (do NOT chunk by line count):
+
+1. `./tools/scan.sh --info <file>` — output now includes section map with exact line boundaries
+2. Chunk **by section boundaries** from the map, skip References/Appendix/Proofs
+3. Spawn agents in parallel, one per logical section group
+4. Each agent: read its lines → produce structured notes (NOT a full summary)
+5. REDUCE: combine all notes → write final summary + concepts
+
+**Cost trade-off**: MAP-REDUCE costs ~3–4x more tokens than sequential. Use only when context overflow is a real risk (> ~15K words in dense technical text). For most papers and articles, sequential read is faster and cheaper.
 
 ---
 
