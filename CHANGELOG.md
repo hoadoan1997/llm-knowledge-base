@@ -7,6 +7,134 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.0] - 2026-05-16
+
+### Added — `html:` command (Markdown → self-contained HTML)
+
+New command for converting any Markdown document into a polished, self-contained HTML page — ideal for sharing reports externally.
+
+**Problem solved**: Markdown reports are unreadable outside a code editor. `html:` converts them into a single `.html` file with TOC sidebar, Mermaid diagrams, step timelines, callouts, comparison cards, light/dark theme, and print-to-PDF support. Zero install for the recipient — open the file in any browser.
+
+**`skills/md2html/`** (new — bundled from [haidang1810/md2html](https://github.com/haidang1810/md2html), MIT):
+- `SKILL.md` — full instructions: language detection, component mapping, placeholder replacement
+- `template.html` — self-contained HTML skeleton with embedded CSS (Claude orange theme), Mermaid CDN, theme toggle, TOC sidebar, scroll progress, print stylesheet
+- `components.md` — catalog of HTML snippets (timelines, callouts, pros-cons, comparison cards, collapsibles, key-point highlights, Mermaid blocks)
+- `examples/` — reference pairs for output calibration
+- Multi-language auto-detection: EN, VI, ZH, JA, KO, ES, FR, DE (UI labels translated automatically)
+- WCAG AA compliant: contrast, touch targets, reduced-motion, focus-visible, skip-to-content
+
+**`AGENTS.md`**: `html:` resolver updated from "system skill" to `skills/md2html/SKILL.md` (project-local, no global dependency).
+
+**`CLAUDE.md`**: added `html: <file.md>` to Quick Commands.
+
+**`outputs/html/`**: new output directory (gitignored, `.gitkeep` tracked).
+
+---
+
+### Changed — `skills/last30days/` (project-native, was global-only)
+
+Before: `skills/last30days/SKILL.md` Phase 2 hardcoded global plugin paths at `~/.claude/plugins/`.  
+After: Phase 2 checks `skills/last30days/scripts/` first (project-local), then falls back to global paths.
+
+- `skills/last30days/scripts/` is gitignored (proprietary marketplace plugin, cannot redistribute)
+- Setup instructions added to SKILL.md Gotchas: `cp -r ~/.claude/plugins/cache/last30days-skill/last30days/*/scripts skills/last30days/scripts`
+- Users without the plugin still get WebSearch-only fallback — skill degrades gracefully
+
+---
+
+### Added — `news:` command (last-30-days social research pipeline)
+
+New command for researching recent news, trends, and social sentiment across Reddit, YouTube, Hacker News, and Polymarket — with automatic wiki filing.
+
+**Problem solved**: `research:` builds timeless, structured knowledge from docs and papers. It doesn't capture ephemeral social signals — what people are discussing on Reddit right now, what's trending on HN, what Polymarket is pricing. `news:` fills this gap for time-sensitive topics.
+
+**`skills/last30days/SKILL.md`** (new):
+- Wraps the global `last30days` plugin (v2.9.5 by mvanhorn) already installed at `~/.claude/plugins/`
+- **Phase 1**: Parse topic + classify QUERY_TYPE (NEWS / RECOMMENDATIONS / COMPARISON / GENERAL)
+- **Phase 2**: Run `last30days.py` script → Reddit, YouTube, HN, Polymarket (available without extra API keys); X/Twitter and TikTok available with optional API keys
+- **Phase 3**: Synthesize "What I learned" + stats block with source attributions and engagement metrics
+- **Phase 4 (wiki filing)**: Auto-creates `wiki/summaries/news-{topic}-{date}.md` + runs `finalize-compile.sh` — research persisted into knowledge base
+- Source availability: Reddit ✅, YouTube ✅ (yt-dlp), HN ✅, Polymarket ✅ | X ❌ (needs AUTH_TOKEN/XAI_API_KEY), TikTok/Instagram ❌ (needs SCRAPECREATORS_API_KEY)
+
+**`AGENTS.md`**: added `news: <topic>` and `news <topic>` (no-colon natural-language form) rows to Workflow Triggers table.
+
+**`CLAUDE.md`**: added `news: <topic>` to Research & Maintain commands section.
+
+**Design distinction from `research:`**:
+- `research:` → parallel 3-agent wiki build, timeless structured knowledge, outputs `wiki/concepts/` + `wiki/summaries/`
+- `news:` → social pulse + recent events, time-sensitive, outputs `wiki/summaries/news-*`
+
+---
+
+### Added — `fetch-url:` command (web content extraction)
+
+New tool for fetching web pages directly into the compile pipeline, replacing the Obsidian Web Clipper for JS-heavy or data-rich pages.
+
+**Problem solved**: Obsidian Web Clipper is a static HTML parser — it cannot execute JavaScript. Any content rendered by React/Vue (benchmark tables, tabbed charts, dynamic data) is invisible to it. Discovered when the Claude Opus 4.7 announcement article was missing the full benchmark table and 28 early-access tester quotes after clipping.
+
+**`tools/fetch-url.sh` + `tools/fetch-url.py`** (new):
+- **Auto-strategy**: try static fetch (`requests` + `markdownify`) first; if word count < 200 → fall back to `r.jina.ai` (handles JS-rendered pages). No manual decision needed.
+- **URL rewriting**: decodes Next.js `/_next/image?url=<encoded>` wrappers → direct CDN URLs. Relative paths → absolute. SVG logos stripped.
+- **Strip footer noise**: removes "Related content", "Related articles", footer link sections from markdown output.
+- **Auto-chain `fetch-images.sh`**: runs automatically after save — no manual step needed.
+- **Filter decorative images**: after download, drops images < 80KB (banners, icons, logos). Charts and data tables are typically 100KB+. Logs kept vs. dropped count.
+- **Zero new dependencies**: uses `markdownify`, `bs4`, `lxml`, `requests` already in `tools/.venv`.
+- Flags: `--force-jina` (skip static, use Jina directly), `--dry-run` (preview without saving).
+
+**`AGENTS.md`**: added `fetch-url: <url> [name]` row to Workflow Triggers table.
+
+**`CLAUDE.md`**: added `fetch-url:` to Quick Commands (Ingest section) and CLI Tools reference.
+
+**`skills/compile-ingest/SKILL.md`**: added `fetch-url:` to trigger line + new section explaining strategy selection and flags.
+
+**Result on Anthropic product pages** (benchmark):
+- Obsidian clip: ~1,400 words, 0 chart images readable
+- `fetch-url`: ~3,000 words, benchmark table + data charts downloaded and readable by Claude vision
+
+---
+
+## [Unreleased] — MAP-REDUCE compile improvements
+
+### Changed — `scan.sh --info` (MAP-REDUCE + HIERARCHICAL strategies)
+
+Before: output only generic text ("Split into parallel chunks of ~4000 words each").  
+After: output includes two new blocks derived from the actual file:
+
+**Section map** — `grep -n "^## "` extracts every top-level heading with exact line range and line count. Headings are stripped of markdown formatting (`**`, leading `#`). First heading whose cleaned title matches `^(references?|appendix|proofs?|proof of)` triggers a `[SKIP line N+]` marker and stops the map — prevents LLM from chunking into boilerplate sections.
+
+**Suggested chunk grouping** — second pass over the same headings merges consecutive sections until the running span hits 150 lines, then emits a `Chunk N: lines A-B` suggestion. Stops at the same skip boundary. Gives parallel agents ready-to-use `offset`/`limit` values instead of asking them to guess.
+
+Bug fixes in the new shell code:
+- **En-dash `–` removed** from echo strings — multi-byte UTF-8 in double-quoted `$var–...` caused bash to emit `varname▒: unbound variable` under `set -u` on some locales. Replaced with ASCII `-`.
+- **CRLF safety** — `line_num` extracted via `awk -F: '{print $1}' | tr -d '[:space:]'` instead of bare `cut -d: -f1`; prevents `\r` from corrupting variable values and arithmetic.
+- **Skip pattern fixed** — skip check now runs on `clean_title` (after stripping `^#*[[:space:]]*`) so `## References` is correctly caught by `^references?`; previously the `##` prefix caused the pattern to miss.
+- **Token cost note added** — output now states "~3-4x sequential" so LLM can make an informed strategy choice.
+
+### Changed — `skills/compile-ingest/SKILL.md` (long document strategy section)
+
+Before: single line pointing to `references/long-doc-strategies.md` (file did not exist).  
+After: inline strategy table (4 rows: STUFFING / REFINE / MAP-REDUCE / HIERARCHICAL with word-count thresholds), followed by a MAP-REDUCE step-by-step that specifies:
+1. Run `scan.sh --info` — use its section map output, not manual line counting
+2. Chunk by section boundaries from the map; skip References/Appendix/Proofs
+3. Each agent produces structured notes (not a full summary)
+4. REDUCE: combine notes into final summary + concepts
+5. Cost trade-off documented inline (~3-4x sequential)
+
+### Context — what prompted this
+
+Experiment: compiled same ~21K-word paper twice — once sequential read, once 6-agent MAP-REDUCE — then compared quality and token cost. Findings:
+- MAP-REDUCE cost ~121K tokens in subagents vs ~30-40K total for sequential (≈ 3.5x)
+- Chunk boundary mismatch (line-count chunks ≠ section boundaries) caused 2 of 6 agents to read wrong sections, requiring a fill read in main context
+- v2 (MAP-REDUCE) captured more sub-section detail (free-entry regimes, surplus decomposition); v1 (sequential) had better cross-section examples
+- Conclusion: sequential is preferred for ≤25K words unless context overflow is a real risk; MAP-REDUCE justified at ≥15K dense technical text with `scan.sh --info` guiding chunk boundaries
+
+### Still pending (for next version)
+- Chunk label in grouping output shows start-section only; ideally shows "Section X → Section Y" range label
+- `_so the wedge is 1._` (a proposition continuation captured as a heading) appears as a spurious section — could filter headings that look like partial sentences
+- No test coverage for the new `--info` shell logic
+
+---
+
 ## [0.5.0] - 2026-04-12
 
 ### Added — Eval-Driven Harness Upgrade

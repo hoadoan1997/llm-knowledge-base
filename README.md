@@ -15,6 +15,7 @@ Core idea: **The LLM reads, summarizes, and connects knowledge for you.** You ju
 | You do | The system does |
 |--------|----------------|
 | Clip an article from the web | Summarizes it, extracts concepts |
+| `fetch-url:` a JS-heavy page | Fetches full content + images, ready to compile |
 | Fetch a GitHub repo | Pulls README + metadata + file tree |
 | Add a PDF paper | Analyzes it, connects it to existing knowledge |
 | Ask a question | Answers based on the entire wiki |
@@ -98,7 +99,17 @@ For the best reading experience with graph view, backlinks, and Dataview queries
 │   ├── reports/            ← Long-form reports
 │   ├── slides/             ← Slideshows (Marp format)
 │   ├── notes/              ← Quick notes
-│   └── charts/             ← PNG charts
+│   ├── charts/             ← PNG charts
+│   └── html/               ← Self-contained HTML pages (md2html skill)
+│
+├── skills/                 ← Portable AI skills (resolver pattern)
+│   ├── compile-ingest/     ← scan/compile skill
+│   ├── last30days/         ← news: social research pipeline
+│   ├── md2html/            ← html: Markdown → self-contained HTML
+│   ├── research-pipeline.md
+│   ├── output-generation.md
+│   ├── query-mode.md
+│   └── lint-impute.md
 │
 └── tools/                  ← Workflow support scripts
     ├── build-index.py      ← Rebuilds index.md + _brief.md (backlink ranking, overview)
@@ -107,6 +118,8 @@ For the best reading experience with graph view, backlinks, and Dataview queries
     ├── convert-docs.py     ← Core script: converts PDF/DOCX/PPTX to MD
     ├── convert.sh          ← Wrapper: auto-converts all binary files in raw/
     ├── fetch-repo.sh       ← Fetches a GitHub repo into raw/repos/
+    ├── fetch-url.sh        ← Fetches any webpage → Markdown (auto static/Jina, images, noise filter)
+    ├── fetch-url.py        ← Core logic for fetch-url.sh
     ├── file-back.sh        ← Tracks the feedback loop
     ├── impute.sh           ← Creates skeleton concept files for web-impute
     ├── scan.sh             ← Tracks ingest status + compile metrics
@@ -128,10 +141,30 @@ For the best reading experience with graph view, backlinks, and Dataview queries
 
 Each source type has its own tool:
 
-### Web articles — Obsidian Web Clipper (recommended)
+### Web articles — fetch-url (recommended for data-rich pages)
+
+For product announcements, benchmark pages, documentation with tabs, or any page that uses JavaScript to render content:
+
+```bash
+./tools/fetch-url.sh https://www.anthropic.com/news/claude-opus-4-7
+./tools/fetch-url.sh https://example.com/article my-custom-name
+./tools/fetch-url.sh https://example.com/article --force-jina   # force JS rendering
+./tools/fetch-url.sh https://example.com/article --dry-run      # preview
+```
+
+Or via Claude Code command:
+```
+fetch-url: https://www.anthropic.com/news/claude-opus-4-7
+```
+
+The script automatically: fetches the page (static or JS-rendered via r.jina.ai), strips navigation/footer noise, downloads and filters images (keeps charts ≥80KB, drops logos/decorative), then saves to `raw/articles/<slug>.md` — ready for `compile`.
+
+### Web articles — Obsidian Web Clipper (simple static articles)
 1. Install the "Obsidian Web Clipper" extension on Chrome/Firefox
 2. Set the save location to: `raw/articles/`
 3. Clip an article → a `.md` file automatically appears in `raw/articles/`
+
+> **When to use which**: Obsidian Web Clipper is fine for plain text articles (blogs, essays). Use `fetch-url:` when the page has tables, charts, tabs, or heavy JavaScript — the clipper will silently miss that content.
 
 ### GitHub repos — fetch-repo.sh
 
@@ -220,12 +253,21 @@ research: [topic]       → parallel sub-agents research the topic, compile into
 ```
 Uses 3 parallel agents (web search, wiki analysis, expert sources) then compiles findings into summaries + concepts with a mandatory quality checklist.
 
-### Generate reports / slides
+### News & trends (last 30 days) → wiki
+```
+news: [topic]           → wiki/summaries/news-topic-YYYY-MM-DD.md
+```
+Researches a topic across Reddit, YouTube, Hacker News, and Polymarket for the last 30 days. Surfaces social sentiment, trending discussions, and prediction market odds — then automatically files results into the wiki. The skill (`skills/last30days/`) is bundled in the project; the underlying search scripts require the `last30days-skill` plugin (Claude Code marketplace). Use for news, recent events, social trends; use `research:` for timeless structured knowledge.
+
+### Generate reports / slides / HTML
 ```
 report: [topic]         → outputs/reports/report-topic-YYYY-MM-DD.md
 slides: [topic]         → outputs/slides/slides-topic-YYYY-MM-DD.md  (Marp)
 notes: [topic]          → outputs/notes/note-topic-YYYY-MM-DD.md
+html: [file.md]         → outputs/html/file.html  (self-contained, shareable)
 ```
+
+Use `html:` after `report:` to convert a Markdown report into a polished, shareable HTML page with TOC sidebar, Mermaid diagrams, step timelines, light/dark theme, and print-to-PDF support. No install needed — zero dependencies for the recipient.
 
 ### Generate charts
 ```
@@ -315,6 +357,21 @@ Converts PDF, DOCX, PPTX, XLSX files to `.md` format in preparation for compilin
 ./tools/convert.sh --scan                    # just list files waiting to be converted
 ./tools/convert.sh --dry-run                 # parse and print to terminal (no files written)
 ```
+
+### `fetch-url.sh` — fetch any webpage into the pipeline
+
+Fetches a URL and saves a clean Markdown file to `raw/articles/`, with images downloaded automatically.
+
+```bash
+./tools/fetch-url.sh https://example.com/article              # auto-slug from URL
+./tools/fetch-url.sh https://example.com/article my-name      # custom output name
+./tools/fetch-url.sh https://example.com/article --force-jina # force JS rendering
+./tools/fetch-url.sh https://example.com/article --dry-run    # preview
+```
+
+**Strategy**: tries static extraction first (fast, token-efficient). If word count < 200, falls back to `r.jina.ai` which renders JavaScript. Auto-runs `fetch-images.sh` and drops decorative images < 80KB.
+
+→ Output: `raw/articles/<slug>.md` with local image paths, ready for `compile`
 
 ### `fetch-images.sh` — download external images from clipped articles
 
@@ -475,7 +532,7 @@ marp outputs/slides/file-name.md --pdf       # export to PDF
 2. **Always file back outputs** — every report/query makes the wiki smarter
 3. **Don't design domains upfront** — create a domain MOC when you naturally have ≥10 notes
 4. **No RAG needed at small scale** — at ~400K words, the LLM navigates via the index
-5. **Each source type has its own tool** — Web Clipper (articles), fetch-repo.sh (GitHub), curl (PDFs)
+5. **Each source type has its own tool** — `fetch-url:` (web/JS pages), Web Clipper (simple articles), `fetch-repo:` (GitHub), `fetch-pdf:` (PDFs)
 6. **file-back is mandatory** — this is the loop that makes knowledge compound over time
 
 ---

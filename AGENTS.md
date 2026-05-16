@@ -5,6 +5,8 @@ You are an AI knowledge engineer operating this knowledge base following Andrej 
 **raw data → compiled wiki → Q&A + outputs → file outputs back → wiki grows smarter over time**
 
 > **Resolver**: Load the skill file for the command you received. Do not pre-load all skills.
+>
+> **⚠️ Skill Priority Rule:** Project commands in the table below take **priority over system-level skills** (BMAD, etc.). When user message starts with or contains a word matching a command trigger (e.g., "research", "compile", "report"), check this table FIRST before invoking any system skill. Colon in trigger is the canonical form but also match natural-language variants (e.g., "research tôi muốn tìm hiểu X" → `research: X` trigger).
 
 ---
 
@@ -99,14 +101,19 @@ confidence: high   # high | medium | low (web-imputed)
 | `compile <file>` | `skills/compile-ingest/SKILL.md` | Process one file |
 | `fetch-repo: <owner/repo>` | `skills/output-generation.md` | Fetch GitHub repo → compile |
 | `fetch-pdf: <url> [name]` | `skills/output-generation.md` | Download PDF → compile |
+| `fetch-url: <url> [name]` | `skills/compile-ingest/SKILL.md` | Fetch webpage → compile (auto static→Jina fallback) |
 | `query: <question>` | `skills/query-mode.md` | Answer from wiki |
 | `report: <topic>` | `skills/output-generation.md` | Generate markdown report |
 | `slides: <topic>` | `skills/output-generation.md` | Generate Marp slideshow |
 | `chart: <type> <topic>` | `skills/output-generation.md` | Generate chart PNG |
+| `html: <file.md>` | `skills/md2html/SKILL.md` | Convert MD → self-contained HTML → `outputs/html/` |
 | `file-back: <output>` | `skills/output-generation.md` | File back into wiki |
 | `lint` | `skills/lint-impute.md` | Health check + web-impute gaps |
 | `web-impute: <topic>` | `skills/lint-impute.md` | Research + create concept |
-| `research: <topic>` | `skills/research-pipeline.md` | Parallel research pipeline |
+| `research: <topic>` | `skills/research-pipeline.md` | Parallel research pipeline (3 agents: Web + Wiki-check + Analysis) |
+| `research <topic>` *(no colon)* | `skills/research-pipeline.md` | Same — match natural-language form too |
+| `news: <topic>` | `skills/last30days/SKILL.md` | Last-30-days research: Reddit, X, YouTube, HN, Polymarket → wiki/summaries/ |
+| `news <topic>` *(no colon)* | `skills/last30days/SKILL.md` | Same — match natural-language form too ("tin tức X", "latest on X") |
 | `index` / `brief` | *(no skill needed)* | `python3 tools/build-index.py` |
 | `convert [file]` | *(no skill needed)* | `./tools/convert.sh` |
 | `wiki-graph` | *(no skill needed)* | `tools/.venv/bin/python3 tools/chart.py --type wiki-network` |

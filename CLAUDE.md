@@ -9,12 +9,16 @@
 
 ## Quick Commands
 
+> **Skill Priority:** Commands below are **project-native** and take priority over system skills (BMAD, etc.).
+> Colon syntax is canonical (`research: topic`) but natural-language forms also match (`research tôi muốn...`).
+
 ### Ingest
 ```
 scan /raw                         # Compile all new files
 compile raw/articles/foo.md       # Compile a specific file
 fetch-repo: owner/repo            # Fetch GitHub repo → compile
 fetch-pdf: <url> [name]           # Download PDF → compile
+fetch-url: <url> [name]           # Fetch webpage → compile (auto JS fallback)
 ```
 
 ### Query & Output
@@ -23,10 +27,13 @@ query: <question>                 # Answer from wiki
 report: <topic>                   # → outputs/reports/
 slides: <topic>                   # → outputs/slides/ (Marp)
 chart: <type> <topic>             # → outputs/charts/
+html: <file.md>                   # → outputs/html/ (self-contained HTML, md2html skill)
 ```
 
-### Maintain
+### Research & Maintain
 ```
+research: <topic>                 # ⚡ Parallel pipeline: 3 agents → wiki/summaries/ + wiki/concepts/
+news: <topic>                     # 📰 Last-30-days news: Reddit, X, YouTube, HN, Polymarket → wiki/summaries/
 file-back: outputs/reports/foo.md # File back loop (REQUIRED after output)
 lint                              # Health check wiki
 web-impute: <topic>               # Research + create concept from web
@@ -56,6 +63,8 @@ python3 ./tools/build-index.py               # Rebuild index.md & _brief.md manu
 # Fetch
 ./tools/fetch-repo.sh owner/repo             # GitHub repo
 ./tools/fetch-repo.sh owner/repo --docs      # + docs/ folder
+./tools/fetch-url.sh <url> [name]            # webpage → Markdown (static, Jina fallback)
+./tools/fetch-url.sh <url> --force-jina      # force JS rendering via r.jina.ai
 ./tools/fetch-images.sh raw/articles/foo.md  # external images → local
 ./tools/save-image.sh <url> [name]           # single image
 
